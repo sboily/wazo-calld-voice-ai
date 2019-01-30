@@ -1,0 +1,10 @@
+name: wazo-stt
+namespace: official
+version: 0.1.0
+author: Dream Team
+display_name: STT
+plugin_format_version: 1
+tags:
+  - beta
+  - application
+homepage: http://www.wazo.io

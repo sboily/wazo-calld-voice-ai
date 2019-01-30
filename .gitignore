@@ -1,0 +1,7 @@
+build/
+dist/
+stt/
+wazo_stt.egg-info/
+wazo_stt/__pycache__/
+wazo_stt/ctid_ng/__pycache__/
+*.swp

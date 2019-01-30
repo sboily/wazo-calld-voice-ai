@@ -1,0 +1,30 @@
+#!/bin/sh
+# Copyright 2019 The Hackathon Team
+# SPDX-License-Identifier: GPLv3
+
+case "$1" in
+    build)
+	python3 setup.py bdist
+    ;;
+
+    package)
+	tar xvf dist/wazo_stt-*.tar.gz -C ${pkgdir}
+	cp -R etc ${pkgdir}/
+    ;;
+
+    install)
+	systemctl restart xivo-ctid-ng
+    ;;
+
+    uninstall)
+	systemctl restart xivo-ctid-ng
+    ;;
+
+    postrm)
+    ;;
+
+    *)
+        echo "$0 called with unknown argument '$1'" >&2
+        exit 1
+    ;;
+esac
