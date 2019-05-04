@@ -15,8 +15,8 @@ setup(
     url='http://wazo.community',
     packages=find_packages(),
     entry_points={
-        'xivo_ctid_ng.plugins': [
-            'stt = wazo_stt.ctid_ng.plugin:Plugin',
+        'wazo_calld.plugins': [
+            'stt = wazo_stt.calld.plugin:Plugin',
         ]
     }
 )

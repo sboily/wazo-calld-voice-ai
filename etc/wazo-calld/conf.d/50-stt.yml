@@ -4,3 +4,4 @@ stt:
   google_creds: /tmp/creds.json
   dump_dir: /tmp/stt
   ari_websocket_stream: ws://127.0.0.1:5039/ws
+  language: fr_FR

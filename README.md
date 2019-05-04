@@ -1,4 +1,4 @@
-Add STT to wazo-ctid
+Add STT to wazo-calld
 
 Installation
 ------------

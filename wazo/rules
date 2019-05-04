@@ -13,11 +13,11 @@ case "$1" in
     ;;
 
     install)
-	systemctl restart xivo-ctid-ng
+	systemctl restart wazo-calld
     ;;
 
     uninstall)
-	systemctl restart xivo-ctid-ng
+	systemctl restart wazo-calld
     ;;
 
     postrm)
