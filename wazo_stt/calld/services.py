@@ -4,6 +4,7 @@
 
 import os
 import functools
+import logging
 
 from concurrent.futures import ThreadPoolExecutor
 from ari.exceptions import ARINotFound
@@ -11,6 +12,8 @@ from websocket import WebSocketApp
 from google.cloud import speech
 from google.cloud.speech import enums
 from google.cloud.speech import types
+
+logger = logging.getLogger(__name__)
 
 
 class SttService(object):

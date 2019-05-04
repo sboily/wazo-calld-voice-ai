@@ -15,3 +15,9 @@ class SttCreateResource(AuthResource):
     @required_acl('calld.stt.create')
     def post(self):
         pass
+
+
+class SttResource(AuthResource):
+
+    def __init__(self):
+        pass

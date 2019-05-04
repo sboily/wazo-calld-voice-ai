@@ -1,6 +1,10 @@
 # Copyright 2018 The Wazo Authors  (see the AUTHORS file)
 # SPDX-License-Identifier: GPL-3.0+
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class SttStasis:
 
