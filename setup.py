@@ -15,9 +15,7 @@ setup(
     url='http://wazo.community',
     packages=find_packages(),
     include_package_data=True,
-    package_data={
-        'wazo_calld': ['*/api.yml'],
-    },
+    package_data={'wazo_stt': ['*/api.yml']},
     entry_points={
         'wazo_calld.plugins': [
             'stt = wazo_stt.calld.plugin:Plugin',
