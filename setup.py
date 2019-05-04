@@ -9,7 +9,7 @@ from setuptools import find_packages
 
 setup(
     name='wazo-stt',
-    version='2.0',
+    version='0.2.0',
     description='Wazo STT',
     author='Wazo Authors',
     url='http://wazo.community',
