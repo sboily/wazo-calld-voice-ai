@@ -1,3 +1,4 @@
+paths:
   /stt/{call_id}:
     post:
       summary: Activate STT on Call ID
