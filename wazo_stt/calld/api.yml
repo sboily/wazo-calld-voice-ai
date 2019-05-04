@@ -1,0 +1,15 @@
+  /stt/{call_id}:
+    post:
+      summary: Activate STT on Call ID
+      description: "
+        **Required ACL:** `calld.stt.create`\n\n
+        **Warning:** This endpoint is still in development and may change in the future."
+      tags:
+        - stt
+      parameters:
+        - $ref: '#/parameters/CallID'
+      responses:
+        '201':
+          description: STT on call has been started
+        '503':
+          $ref: '#/responses/AnotherServiceUnavailable'

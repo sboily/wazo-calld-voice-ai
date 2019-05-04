@@ -18,9 +18,10 @@ logger = logging.getLogger(__name__)
 
 class SttService(object):
 
-    def __init__(self, config, notifier):
+    def __init__(self, config, ari, notifier):
         self._config = config
         self._notifier = notifier
+        self._ari = ari
         self._threadpool = ThreadPoolExecutor(max_workers=10)
         self._speech_client = speech.SpeechClient.from_service_account_file(
             config["stt"]["google_creds"])
@@ -37,11 +38,13 @@ class SttService(object):
             except OSError:
                 pass
 
-    def start(self, event_objects, event):
-        logger.critical("event_objects: %s", event_objects)
-        logger.critical("event: %s", event)
-        self._threadpool.submit(self._handle_call, event_objects)
+    def start(self, channel):
+        logger.critical("channel: %s", channel)
+        self._threadpool.submit(self._handle_call, channel)
         logger.critical("thread started")
+
+    def get_channel_by_id(self, channel_id):
+        return self._ari.channels.get(channelId=channel_id)
 
     def _open_dumb(self, channel):
         if self._config["stt"].get("dump_dir"):
@@ -49,9 +52,7 @@ class SttService(object):
                 self._config["stt"]["dump_dir"],
                 channel.id), "wb+")
 
-    def _handle_call(self, event_objects):
-        channel = event_objects["channel"]
-
+    def _handle_call(self, channel):
         dump = self._open_dumb(channel)
         ws = WebSocketApp(self._config["stt"]["ari_websocket_stream"],
                           header={"Channel-ID": channel.id},

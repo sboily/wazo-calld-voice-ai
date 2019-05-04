@@ -22,5 +22,6 @@ class SttStasis:
     def _stasis_start(self, event_objects, event):
         logger.critical("event_objects: %s", event_objects)
         logger.critical("event: %s", event)
-        self._stt_service.start(event_objects, event)
+        channel = event_objects["channel"]
+        self._stt_service.start(channel)
         logger.critical("thread started")
