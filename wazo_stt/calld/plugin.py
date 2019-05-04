@@ -1,22 +1,26 @@
 # Copyright 2019-2019 The Wazo Authors  (see the AUTHORS file)
 # SPDX-License-Identifier: GPL-3.0+
 
-import logging
-
 from .notifier import SttNotifier
 from .stasis import SttStasis
-
-logger = logging.getLogger(__name__)
+from .services import SttService
+from .resources import (
+    SttResource,
+    SttCreateResource
+)
 
 
 class Plugin:
 
     def load(self, dependencies):
-        bus_consumer = dependencies['bus_consumer']
-        bus_publisher = dependencies['bus_publisher']
         ari = dependencies['ari']
+        api = dependencies['api']
         config = dependencies['config']
+        bus_publisher = dependencies['bus_publisher']
 
         notifier = SttNotifier(bus_publisher)
-        stasis = SttStasis(config, ari, notifier)
-        stasis.initialize()
+        stt_service = SttService(config, notifier)
+        stasis = SttStasis(config, ari, stt_service)
+
+        api.add_resource(SttCreateResource, '/stt', resource_class_args=[stt_service])
+        api.add_resource(SttResource, '/stt/<stt_id>', resource_class_args=[stt_service])
