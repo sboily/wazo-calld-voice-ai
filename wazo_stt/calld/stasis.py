@@ -31,7 +31,7 @@ class SttStasis:
             config=types.RecognitionConfig(
                 encoding=enums.RecognitionConfig.AudioEncoding.LINEAR16,
                 sample_rate_hertz=16000,
-                language_code=_config["stt"]["language"]))
+                language_code=self._config["stt"]["language"]))
 
         self._buffers = {}
         if self._config["stt"].get("dump_dir"):
