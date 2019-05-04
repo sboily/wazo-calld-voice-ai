@@ -19,7 +19,7 @@ class Plugin:
         bus_publisher = dependencies['bus_publisher']
 
         notifier = SttNotifier(bus_publisher)
-        stt_service = SttService(config, ari, notifier)
+        stt_service = SttService(config, ari.client, notifier)
         stasis = SttStasis(config, ari, stt_service)
 
         api.add_resource(SttCreateResource, '/stt/<call_id>', resource_class_args=[stt_service])

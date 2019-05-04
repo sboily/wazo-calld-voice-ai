@@ -16,8 +16,7 @@ class SttCreateResource(AuthResource):
         self._service = service
 
     @required_acl('calld.stt.create')
-    def post(self):
-        call_id = CallSchema().load(request.get_json()).data
+    def post(self, call_id):
         channel = self._service.get_channel_by_id(call_id)
 
         self._service.start(channel)
