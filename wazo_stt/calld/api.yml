@@ -5,6 +5,15 @@ paths:
       description: "
         **Required ACL:** `calld.stt.create`\n\n
         **Warning:** This endpoint is still in development and may change in the future."
+      tags:
+        - stt
+      parameters:
+        - $ref: '#/parameters/CallID'
+      responses:
+        '201':
+          description: STT on call has been started
+        '503':
+          $ref: '#/responses/AnotherServiceUnavailable'
     delete:
       summary: Deactivate STT on Call ID
       description: "
@@ -15,7 +24,7 @@ paths:
       parameters:
         - $ref: '#/parameters/CallID'
       responses:
-        '201':
+        '204':
           description: STT on call has been started
         '503':
           $ref: '#/responses/AnotherServiceUnavailable'
