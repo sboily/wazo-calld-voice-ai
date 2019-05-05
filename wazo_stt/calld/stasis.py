@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 class SttStasis:
 
     def __init__(self, config, ari, stt_service):
-        self._ari = ari.client
+        self._ari = ari
         self._stt_service = stt_service
 
         if config["stt"]["stasis"]:

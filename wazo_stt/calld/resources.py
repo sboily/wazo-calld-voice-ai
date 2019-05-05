@@ -23,6 +23,12 @@ class SttCreateResource(AuthResource):
 
         return CallSchema().dump(call_id).data, 201
 
+    @required_acl('calld.stt.delete')
+    def delete(self, call_id):
+        self._service.stop(call_id)
+
+        return '', 204
+
 
 class SttResource(AuthResource):
 

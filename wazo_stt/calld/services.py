@@ -32,6 +32,7 @@ class SttService(object):
                 language_code=self._config["stt"]["language"]))
 
         self._buffers = {}
+        self._current_calls = {}
         if self._config["stt"].get("dump_dir"):
             try:
                 os.makedirs(self._config["stt"]["dump_dir"])
@@ -40,8 +41,14 @@ class SttService(object):
 
     def start(self, channel):
         logger.critical("channel: %s", channel)
-        self._threadpool.submit(self._handle_call, channel)
+        call_thread = self._threadpool.submit(self._handle_call, channel)
+        self._current_calls.update({call_id: call_thread})
         logger.critical("thread started")
+
+    def stop(self, call_id):
+        call = self._current_calls.get(call_id)
+        call.cancel()
+        return call.done()
 
     def get_channel_by_id(self, channel_id):
         return self._ari.channels.get(channelId=channel_id)
@@ -106,7 +113,7 @@ class SttService(object):
             for result in results:
                 if result.is_final:
                     last_stt = result.alternatives[0].transcript
-                    logger.critical("test: %s", last_stt)
+                    logger.critical("result last stt: %s", last_stt)
 
                     try:
                         all_stt = (
