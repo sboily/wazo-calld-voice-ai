@@ -1,5 +1,5 @@
 paths:
-  /stt/{call_id}:
+  /stt:
     post:
       summary: Activate STT on Call ID
       description: "
@@ -8,12 +8,16 @@ paths:
       tags:
         - stt
       parameters:
-        - $ref: '#/parameters/CallID'
+      - name: body
+        in: body
+        description: Call parameters
+        required: true
       responses:
         '201':
           description: STT on call has been started
         '503':
           $ref: '#/responses/AnotherServiceUnavailable'
+  /stt/{call_id}:
     delete:
       summary: Deactivate STT on Call ID
       description: "

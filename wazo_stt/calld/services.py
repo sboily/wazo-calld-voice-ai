@@ -47,8 +47,10 @@ class SttService(object):
 
     def stop(self, call_id):
         call = self._current_calls.get(call_id)
-        call.cancel()
-        return call.done()
+        if call:
+            call.cancel()
+            return call.done()
+        return False
 
     def get_channel_by_id(self, channel_id):
         return self._ari.channels.get(channelId=channel_id)
