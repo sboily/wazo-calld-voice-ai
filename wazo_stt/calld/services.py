@@ -42,7 +42,7 @@ class SttService(object):
     def start(self, channel):
         logger.critical("channel: %s", channel)
         call_thread = self._threadpool.submit(self._handle_call, channel)
-        self._current_calls.update({call_id: call_thread})
+        self._current_calls.update({channel.id: call_thread})
         logger.critical("thread started")
 
     def stop(self, call_id):

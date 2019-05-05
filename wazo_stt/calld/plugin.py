@@ -23,4 +23,4 @@ class Plugin:
         stasis = SttStasis(config, ari.client, stt_service)
 
         api.add_resource(SttCreateResource, '/stt', resource_class_args=[stt_service])
-        api.add_resource(SttResource, '/stt/<stt_id>', resource_class_args=[stt_service])
+        api.add_resource(SttResource, '/stt/<call_id>', resource_class_args=[stt_service])
