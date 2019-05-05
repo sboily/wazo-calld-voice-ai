@@ -6,3 +6,4 @@ stt:
   ari_websocket_stream: ws://127.0.0.1:5039/ws
   language: fr_FR
   stasis: true
+  workers: 10

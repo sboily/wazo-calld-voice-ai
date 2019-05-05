@@ -22,7 +22,7 @@ class SttService(object):
         self._config = config
         self._notifier = notifier
         self._ari = ari
-        self._threadpool = ThreadPoolExecutor(max_workers=10)
+        self._threadpool = ThreadPoolExecutor(max_workers=self._config["stt"]["workers"])
         self._speech_client = speech.SpeechClient.from_service_account_file(
             config["stt"]["google_creds"])
         self._streaming_config = types.StreamingRecognitionConfig(
