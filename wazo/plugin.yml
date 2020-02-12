@@ -1,6 +1,6 @@
 name: wazo-stt
 namespace: official
-version: 0.2.4
+version: 0.2.5
 author: Dream Team
 display_name: STT voice module
 plugin_format_version: 1

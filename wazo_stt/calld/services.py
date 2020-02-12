@@ -43,7 +43,6 @@ class SttService(object):
         logger.critical("channel: %s", channel)
         call_thread = self._threadpool.submit(self._handle_call, channel)
         self._current_calls.update({channel.id: call_thread})
-        logger.critical("thread started")
 
     def stop(self, call_id):
         call = self._current_calls.get(call_id)
@@ -95,8 +94,8 @@ class SttService(object):
 
     def _send_buffer(self, channel, dump):
         chunk = self._buffers.pop(channel.id, None)
-        logger.critical("_send_buffer: chunk len: %s",
-                        len(chunk) if chunk is not None else None)
+        #logger.critical("_send_buffer: chunk len: %s",
+        #                len(chunk) if chunk is not None else None)
         if not chunk:
             return
 
@@ -108,7 +107,7 @@ class SttService(object):
         responses = list(self._speech_client.streaming_recognize(
             self._streaming_config, [request]))
 
-        logger.critical("responses: %d" % len(responses))
+        #logger.critical("responses: %d" % len(responses))
         for response in responses:
             results = list(response.results)
             logger.critical("results: %d" % len(results))

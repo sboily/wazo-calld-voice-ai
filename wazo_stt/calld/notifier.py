@@ -9,10 +9,10 @@ logger = logging.getLogger(__name__)
 
 class SttEvent(object):
     name = 'stt'
-    required_acl = "events.stt"
+    required_acl = "events.applications.stt"
 
     def __init__(self, channel_id, result_stt):
-        self.routing_key = 'stt.event'
+        self.routing_key = 'applications.stt.event'
         self.channel_id = channel_id
         self.result_stt = result_stt
 
