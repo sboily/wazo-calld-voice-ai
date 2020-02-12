@@ -10,7 +10,7 @@ from wazo_calld.http import AuthResource
 from .schemas import CallSchema
 
 
-stt_request_schema = CallSchema(strict=True)
+stt_request_schema = CallSchema()
 
 
 class SttCreateResource(AuthResource):
