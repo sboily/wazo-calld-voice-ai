@@ -13,6 +13,8 @@ from google.cloud import speech
 from google.cloud.speech import enums
 from google.cloud.speech import types
 
+from uhlive import Client
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,14 +25,9 @@ class SttService(object):
         self._notifier = notifier
         self._ari = ari
         self._threadpool = ThreadPoolExecutor(max_workers=self._config["stt"]["workers"])
-        self._speech_client = speech.SpeechClient.from_service_account_file(
-            config["stt"]["google_creds"])
-        self._streaming_config = types.StreamingRecognitionConfig(
-            config=types.RecognitionConfig(
-                encoding=enums.RecognitionConfig.AudioEncoding.LINEAR16,
-                sample_rate_hertz=16000,
-                language_code=self._config["stt"]["language"]))
-
+        self._engine = config["stt"]["engine"]
+        self._speech_client = None
+        self._streaming_config = None
         self._buffers = {}
         self._current_calls = {}
         if self._config["stt"].get("dump_dir"):
@@ -38,6 +35,24 @@ class SttService(object):
                 os.makedirs(self._config["stt"]["dump_dir"])
             except OSError:
                 pass
+
+        self._init_client()
+
+    def _init_client(self):
+        if self._engine == "google":
+            self._speech_client = speech.SpeechClient.from_service_account_file(
+                self._config["stt"]["google_creds"])
+            self._streaming_config = types.StreamingRecognitionConfig(
+                config=types.RecognitionConfig(
+                    encoding=enums.RecognitionConfig.AudioEncoding.LINEAR16,
+                    sample_rate_hertz=16000,
+                    language_code=self._config["stt"]["language"]))
+        else if self._engine == "allo":
+            self._speech_client = Client(url="wss://api.uh.live", token=self._config["stt"]["allo_creds"])
+            self._speech_client.connect()
+            self._speech_client.join_conversation("wazo-conversation")
+        else:
+            raise('Error no speech engine has been initialize')
 
     def start(self, channel):
         logger.critical("channel: %s", channel)
@@ -94,36 +109,50 @@ class SttService(object):
 
     def _send_buffer(self, channel, dump):
         chunk = self._buffers.pop(channel.id, None)
-        #logger.critical("_send_buffer: chunk len: %s",
-        #                len(chunk) if chunk is not None else None)
         if not chunk:
             return
 
         if dump:
             dump.write(chunk)
 
-        request = types.StreamingRecognizeRequest(audio_content=chunk)
+        if self._engine == "google":
+            request = types.StreamingRecognizeRequest(audio_content=chunk)
+            responses = list(self._speech_client.streaming_recognize(
+                self._streaming_config, [request]))
 
-        responses = list(self._speech_client.streaming_recognize(
-            self._streaming_config, [request]))
+            for response in responses:
+                results = list(response.results)
+                logger.critical("results: %d" % len(results))
+                for result in results:
+                    if result.is_final:
+                        last_stt = result.alternatives[0].transcript
+                        self._publish_wazo_bus(channel, last_stt)
 
-        #logger.critical("responses: %d" % len(responses))
-        for response in responses:
-            results = list(response.results)
-            logger.critical("results: %d" % len(results))
-            for result in results:
-                if result.is_final:
-                    last_stt = result.alternatives[0].transcript
-                    logger.critical("result last stt: %s", last_stt)
+        if self._engine == "allo":
+            self._speech_client.send_audio_chunk(chunk)
 
-                    try:
-                        all_stt = (
-                            channel.getChannelVar(
-                                variable="X_WAZO_STT")['value'] +
-                            last_stt
-                        )
-                    except ARINotFound:
-                        all_stt = last_stt
-                    channel.setChannelVar(variable="X_WAZO_STT",
-                                          value=all_stt[-1020:])
-                    self._notifier.publish_stt(channel.id, last_stt)
+            while True:
+                event = client.get_event()
+
+                if not event:
+                    print("There are no more events")
+                    break
+
+                if event.is_final:
+                    last_stt = event.transcript
+                    self._publish_wazo_bus(channel, last_stt)
+
+    def _publish_wazo_bus(self, channel, last_stt):
+        logger.critical("result last stt: %s", last_stt)
+
+        try:
+            all_stt = (
+                channel.getChannelVar(
+                    variable="X_WAZO_STT")['value'] +
+                last_stt
+            )
+         except ARINotFound:
+             all_stt = last_stt
+             channel.setChannelVar(variable="X_WAZO_STT",
+                                   value=all_stt[-1020:])
+             self._notifier.publish_stt(channel.id, last_stt)
