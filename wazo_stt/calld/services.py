@@ -47,7 +47,7 @@ class SttService(object):
                     encoding=enums.RecognitionConfig.AudioEncoding.LINEAR16,
                     sample_rate_hertz=16000,
                     language_code=self._config["stt"]["language"]))
-        else if self._engine == "allo":
+        elif self._engine == "allo":
             self._speech_client = Client(url="wss://api.uh.live", token=self._config["stt"]["allo_creds"])
             self._speech_client.connect()
             self._speech_client.join_conversation("wazo-conversation")
@@ -151,8 +151,8 @@ class SttService(object):
                     variable="X_WAZO_STT")['value'] +
                 last_stt
             )
-         except ARINotFound:
-             all_stt = last_stt
-             channel.setChannelVar(variable="X_WAZO_STT",
-                                   value=all_stt[-1020:])
-             self._notifier.publish_stt(channel.id, last_stt)
+        except ARINotFound:
+            all_stt = last_stt
+            channel.setChannelVar(variable="X_WAZO_STT",
+                                  value=all_stt[-1020:])
+            self._notifier.publish_stt(channel.id, last_stt)
