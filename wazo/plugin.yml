@@ -1,10 +1,12 @@
 name: wazo-stt
-namespace: official
-version: 0.2.7
+namespace: quintana
+version: 0.2.8
 author: Dream Team
 display_name: STT voice module
 plugin_format_version: 1
 tags:
   - beta
   - application
+debian_depends:
+  - python3-googleapi
 homepage: http://www.wazo.io
