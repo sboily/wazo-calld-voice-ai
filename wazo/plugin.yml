@@ -7,6 +7,4 @@ plugin_format_version: 1
 tags:
   - beta
   - application
-debian_depends:
-  - python3-googleapi
 homepage: http://www.wazo.io
