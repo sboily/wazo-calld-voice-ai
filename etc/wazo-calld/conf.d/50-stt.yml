@@ -1,9 +1,10 @@
 enabled_plugins:
   stt: true
 stt:
-  engine: 'google'
-  google_creds: /tmp/creds.json
-  allo_creds: <allo_media_token>
+  engine: 'google'  # options: 'google', 'voice_ai'
+  google_creds: /path/to/google-credentials.json
+  voice_ai_uri: ws://localhost:8765
+  use_ai: false  # Enable AI agent for voice_ai engine
   dump_dir: /tmp/stt
   ari_websocket_stream: ws://127.0.0.1:5039/ws
   language: fr_FR

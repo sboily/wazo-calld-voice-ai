@@ -1,0 +1,103 @@
+# -*- coding: utf-8 -*-
+# Copyright 2025 The Wazo Authors  (see the AUTHORS file)
+# SPDX-License-Identifier: GPL-3.0+
+
+import logging
+import threading
+from .engine_base import SttEngineBase
+from .voice_ai_client import VoiceAIClient
+
+logger = logging.getLogger(__name__)
+
+
+class VoiceAIEngine(SttEngineBase):
+    """Voice AI service engine implementation"""
+
+    def _initialize(self):
+        """Initialize the Voice AI engine configuration"""
+        self._clients = {}  # Store client instances for each channel
+        self._uri = self._config["stt"]["voice_ai_uri"]
+        self._language = self._config["stt"]["language"]
+        self._use_ai = self._config["stt"].get("use_ai", False)
+
+    def process_audio_chunk(self, channel, chunk):
+        """Process an audio chunk through Voice AI service
+        
+        Args:
+            channel: The channel object
+            chunk: Binary audio data
+        """
+        if not chunk or channel.id not in self._clients:
+            return
+            
+        # Send the audio chunk to the Voice AI service
+        # Results will come back through the callback
+        self._clients[channel.id].send_audio_chunk(chunk)
+
+    def start(self, channel, **kwargs):
+        """Start processing for a channel
+        
+        Args:
+            channel: The channel to process
+            **kwargs: Additional parameters (use_ai can be overridden)
+        """
+        logger.info(f"Starting Voice AI engine for channel: {channel.id}")
+        
+        # Get use_ai setting, allowing override per channel
+        use_ai = kwargs.get("use_ai", self._use_ai)
+        
+        # Create a new client for this channel
+        client = VoiceAIClient(
+            uri=self._uri,
+            language=self._language,
+            use_ai=use_ai,
+            sample_rate=16000
+        )
+        
+        # Set up callbacks
+        def on_transcription(text):
+            self.publish_transcription(channel, text)
+            
+        def on_ai_response(response):
+            self._handle_ai_response(channel, response)
+        
+        # Start the client
+        success = client.start(on_transcription, on_ai_response)
+        if success:
+            self._clients[channel.id] = client
+            return True
+        else:
+            logger.error(f"Failed to start Voice AI client for channel: {channel.id}")
+            return False
+
+    def stop(self, channel_id):
+        """Stop processing for a channel
+        
+        Args:
+            channel_id: ID of the channel to stop
+        """
+        logger.info(f"Stopping Voice AI engine for channel: {channel_id}")
+        if channel_id in self._clients:
+            client = self._clients.pop(channel_id)
+            client.stop()
+            return True
+        return False
+        
+    def _handle_ai_response(self, channel, response):
+        """Handle AI response from Voice AI service
+        
+        Args:
+            channel: The channel object
+            response: The AI response text
+        """
+        logger.info(f"Voice AI response for channel {channel.id}: {response}")
+        try:
+            # Store AI response in channel variable
+            channel.setChannelVar(variable="X_WAZO_AI_RESPONSE", 
+                               value=response[-1020:])
+                
+            # Publish to bus
+            self._notifier.publish_ai_response(channel.id, response)
+                
+        except Exception as e:
+            logger.error(f"Error handling Voice AI response: {e}")

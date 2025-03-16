@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 2019 The Wazo Authors  (see the AUTHORS file)
+# Copyright 2019-2025 The Wazo Authors  (see the AUTHORS file)
 # SPDX-License-Identifier: GPL-3.0+
 
 from flask import request
@@ -23,9 +23,11 @@ class SttCreateResource(AuthResource):
         request_body = stt_request_schema.load(request.get_json(force=True)).data
         channel = self._service.get_channel_by_id(request_body["call_id"])
 
-        self._service.start(channel)
+        # Pass use_ai parameter to start method
+        use_ai = request_body.get("use_ai", False)
+        self._service.start(channel, use_ai=use_ai)
 
-        return CallSchema().dump(request_body["call_id"]).data, 201
+        return CallSchema().dump({"call_id": request_body["call_id"]}).data, 201
 
 
 class SttResource(AuthResource):

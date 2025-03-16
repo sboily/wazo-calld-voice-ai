@@ -1,4 +1,4 @@
-# Copyright 2019 The Wazo Authors  (see the AUTHORS file)
+# Copyright 2019-2025 The Wazo Authors  (see the AUTHORS file)
 # SPDX-License-Identifier: GPL-3.0+
 
 
@@ -30,4 +30,8 @@ class SttNotifier:
 
     def publish_stt(self, channel_id, result_stt):
         event = SttEvent(channel_id, result_stt)
+        self._bus_producer.publish(event)
+
+    def publish_ai_response(self, channel_id, response):
+        event = AIResponseEvent(channel_id, response)
         self._bus_producer.publish(event)

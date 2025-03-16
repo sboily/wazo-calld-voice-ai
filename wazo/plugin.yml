@@ -1,10 +1,11 @@
 name: wazo-stt
 namespace: quintana
-version: 0.2.8
-author: Dream Team
+version: 0.3.0
+author: Sylvain Boily
 display_name: STT voice module
 plugin_format_version: 1
 tags:
-  - beta
   - application
-homepage: http://www.wazo.io
+  - AI
+  - Voice transcription
+homepage: http://github.com/sboily
