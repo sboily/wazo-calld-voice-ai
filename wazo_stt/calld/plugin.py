@@ -31,3 +31,5 @@ class Plugin:
 
         api.add_resource(SttCreateResource, '/stt', resource_class_args=[stt_service])
         api.add_resource(SttResource, '/stt/<call_id>', resource_class_args=[stt_service])
+
+        pubsub.subscribe('stopping', lambda *: stt_service.stop_all())

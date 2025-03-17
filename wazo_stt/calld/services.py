@@ -5,6 +5,7 @@
 import os
 import functools
 import logging
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from websocket import WebSocketApp
 
@@ -24,6 +25,7 @@ class SttService(object):
         self._buffers = {}
         self._current_calls = {}
         self._websockets = {}  # Store websocket instances for each call
+        self._shutdown_lock = threading.RLock()  # Lock for thread-safe shutdown
         
         if self._config["stt"].get("dump_dir"):
             try:
@@ -43,6 +45,7 @@ class SttService(object):
         
         Args:
             channel: The channel to process
+            tenant_uuid: The tenant UUID
             use_ai: Override use_ai setting for this channel (only for voice_ai engine)
         """
         logger.info(f"Starting STT for channel: {channel.id}")
@@ -52,43 +55,90 @@ class SttService(object):
             kwargs["use_ai"] = use_ai
             
         # Initialize the engine for this channel
-        self._engine.start(channel, **kwargs)
+        self._engine.start(channel, tenant_uuid, **kwargs)
         
         # Start a thread to handle audio for this channel
         call_thread = self._threadpool.submit(self._handle_call, channel, tenant_uuid)
-        self._current_calls.update({channel.id: call_thread, "tenant_uuid": tenant_uuid})
+        self._current_calls[channel.id] = {
+            "thread": call_thread,
+            "tenant_uuid": tenant_uuid
+        }
 
     def stop(self, call_id, tenant_uuid):
         """Stop STT processing for a call
         
         Args:
             call_id: The call ID to stop processing for
+            tenant_uuid: The tenant UUID
         """
-        logger.info(f"Stopping STT for channel: {call_id}")
-        
-        # Close ARI websocket if it exists
-        if call_id in self._websockets:
-            try:
-                ws = self._websockets.pop(call_id)
-                ws.close()
-                logger.info(f"Closed ARI websocket for channel: {call_id}")
-            except Exception as e:
-                logger.error(f"Error closing ARI websocket for channel {call_id}: {e}")
-        
-        # Cancel the thread
-        call = self._current_calls.get(call_id)
-        if call:
-            call.cancel()
+        with self._shutdown_lock:
+            logger.info(f"Stopping STT for channel: {call_id}")
             
-            # Stop the engine for this channel (will close Voice AI websocket)
-            self._engine.stop(call_id, tenant_uuid)
+            # Close ARI websocket if it exists
+            if call_id in self._websockets:
+                try:
+                    ws = self._websockets.pop(call_id)
+                    ws.close()
+                    logger.info(f"Closed ARI websocket for channel: {call_id}")
+                except Exception as e:
+                    logger.error(f"Error closing ARI websocket for channel {call_id}: {e}")
             
-            # Clean up any remaining buffers
-            if call_id in self._buffers:
-                del self._buffers[call_id]
+            # Cancel the thread
+            call_data = self._current_calls.pop(call_id, None)
+            if call_data and "thread" in call_data:
+                call = call_data["thread"]
+                try:
+                    call.cancel()
+                except Exception as e:
+                    logger.error(f"Error canceling thread for channel {call_id}: {e}")
                 
-            return call.done()
-        return False
+                # Stop the engine for this channel (will close Voice AI websocket)
+                try:
+                    self._engine.stop(call_id, tenant_uuid)
+                except Exception as e:
+                    logger.error(f"Error stopping engine for channel {call_id}: {e}")
+                
+                # Clean up any remaining buffers
+                if call_id in self._buffers:
+                    del self._buffers[call_id]
+                    
+                return True
+            
+            return False
+    
+    def stop_all(self):
+        """Stop all active STT sessions
+        
+        This method is called during shutdown to ensure all resources are released.
+        """
+        with self._shutdown_lock:
+            logger.info(f"Stopping all STT sessions ({len(self._current_calls)} active)")
+            
+            # Make a copy of the keys to avoid modifying during iteration
+            call_ids = list(self._current_calls.keys())
+            
+            # Stop each call
+            for call_id in call_ids:
+                try:
+                    call_data = self._current_calls.get(call_id)
+                    if call_data and "tenant_uuid" in call_data:
+                        tenant_uuid = call_data["tenant_uuid"]
+                        self.stop(call_id, tenant_uuid)
+                    else:
+                        logger.warning(f"Missing tenant_uuid for call {call_id} during shutdown")
+                        # Attempt to stop anyway with None for tenant_uuid
+                        self.stop(call_id, None)
+                except Exception as e:
+                    logger.error(f"Error stopping call {call_id} during shutdown: {e}")
+            
+            # Shutdown the thread pool
+            logger.info("Shutting down STT threadpool")
+            try:
+                self._threadpool.shutdown(wait=False)
+            except Exception as e:
+                logger.error(f"Error shutting down threadpool: {e}")
+            
+            logger.info("All STT sessions stopped")
 
     def get_channel_by_id(self, channel_id, tenant_uuid):
         """Get a channel by ID
@@ -116,6 +166,7 @@ class SttService(object):
         
         Args:
             channel: The channel to handle
+            tenant_uuid: The tenant UUID
         """
         dump = self._open_dump(channel)
         
@@ -141,10 +192,15 @@ class SttService(object):
         
         try:
             ws.run_forever()
+        except Exception as e:
+            logger.error(f"Error in websocket for channel {channel.id}: {e}")
         finally:
             # Clean up when the websocket exits
-            if channel.id in self._websockets and self._websockets[channel.id] is ws:
-                del self._websockets[channel.id]
+            with self._shutdown_lock:
+                if channel.id in self._websockets and self._websockets[channel.id] is ws:
+                    del self._websockets[channel.id]
+                if channel.id in self._current_calls:
+                    del self._current_calls[channel.id]
 
     def _on_error(self, ws, error):
         """Handle websocket errors
@@ -161,18 +217,26 @@ class SttService(object):
         Args:
             ws: The websocket
             channel: The channel
+            tenant_uuid: The tenant UUID
             dump: The dump file
         """
         # Process any remaining audio
-        self._send_buffer(channel, tenant_uuid, dump)
+        try:
+            self._send_buffer(channel, tenant_uuid, dump)
+        except Exception as e:
+            logger.error(f"Error sending final buffer for channel {channel.id}: {e}")
         
         # Close the dump file if it exists
         if dump:
-            dump.close()
+            try:
+                dump.close()
+            except Exception as e:
+                logger.error(f"Error closing dump file for channel {channel.id}: {e}")
             
         # Clean up this channel's entry in the websockets dict
-        if channel.id in self._websockets and self._websockets[channel.id] is ws:
-            del self._websockets[channel.id]
+        with self._shutdown_lock:
+            if channel.id in self._websockets and self._websockets[channel.id] is ws:
+                del self._websockets[channel.id]
             
         logger.info(f"ARI websocket closed for channel: {channel.id}")
 
@@ -183,7 +247,7 @@ class SttService(object):
             ws: The websocket
             message: The message
             channel: The channel
-            tenant_uuid: The tenant
+            tenant_uuid: The tenant UUID
             dump: The dump file
         """
         chunk = self._buffers.setdefault(channel.id, b'') + message
@@ -199,6 +263,7 @@ class SttService(object):
         
         Args:
             channel: The channel
+            tenant_uuid: The tenant UUID
             dump: The dump file
         """
         chunk = self._buffers.pop(channel.id, None)
@@ -209,4 +274,7 @@ class SttService(object):
             dump.write(chunk)
             
         # Process the chunk with the engine
-        self._engine.process_audio_chunk(channel, tenant_uuid, chunk)
+        try:
+            self._engine.process_audio_chunk(channel, tenant_uuid, chunk)
+        except Exception as e:
+            logger.error(f"Error processing audio chunk for channel {channel.id}: {e}")
