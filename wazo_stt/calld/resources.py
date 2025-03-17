@@ -20,14 +20,14 @@ class SttCreateResource(AuthResource):
 
     @required_acl('calld.stt.create')
     def post(self):
-        request_body = stt_request_schema.load(request.get_json(force=True)).data
+        request_body = stt_request_schema.load(request.get_json(force=True))
         channel = self._service.get_channel_by_id(request_body["call_id"])
 
         # Pass use_ai parameter to start method
         use_ai = request_body.get("use_ai", False)
         self._service.start(channel, use_ai=use_ai)
 
-        return CallSchema().dump({"call_id": request_body["call_id"]}).data, 201
+        return CallSchema().dump({"call_id": request_body["call_id"]}), 201
 
 
 class SttResource(AuthResource):

@@ -23,6 +23,7 @@ class SttService(object):
         self._engine_type = config["stt"]["engine"]
         self._buffers = {}
         self._current_calls = {}
+        self._websockets = {}  # Store websocket instances for each call
         
         if self._config["stt"].get("dump_dir"):
             try:
@@ -64,11 +65,28 @@ class SttService(object):
             call_id: The call ID to stop processing for
         """
         logger.info(f"Stopping STT for channel: {call_id}")
+        
+        # Close ARI websocket if it exists
+        if call_id in self._websockets:
+            try:
+                ws = self._websockets.pop(call_id)
+                ws.close()
+                logger.info(f"Closed ARI websocket for channel: {call_id}")
+            except Exception as e:
+                logger.error(f"Error closing ARI websocket for channel {call_id}: {e}")
+        
+        # Cancel the thread
         call = self._current_calls.get(call_id)
         if call:
             call.cancel()
-            # Stop the engine for this channel
+            
+            # Stop the engine for this channel (will close Voice AI websocket)
             self._engine.stop(call_id)
+            
+            # Clean up any remaining buffers
+            if call_id in self._buffers:
+                del self._buffers[call_id]
+                
             return call.done()
         return False
 
@@ -112,8 +130,18 @@ class SttService(object):
                                                      channel=channel,
                                                      dump=dump)
                           )
+        
+        # Store the websocket instance for potential early closure
+        self._websockets[channel.id] = ws
+        
         logger.info(f"Websocket client started for channel: {channel.id}")
-        ws.run_forever()
+        
+        try:
+            ws.run_forever()
+        finally:
+            # Clean up when the websocket exits
+            if channel.id in self._websockets and self._websockets[channel.id] is ws:
+                del self._websockets[channel.id]
 
     def _on_error(self, ws, error):
         """Handle websocket errors
@@ -132,9 +160,18 @@ class SttService(object):
             channel: The channel
             dump: The dump file
         """
+        # Process any remaining audio
         self._send_buffer(channel, dump)
+        
+        # Close the dump file if it exists
         if dump:
             dump.close()
+            
+        # Clean up this channel's entry in the websockets dict
+        if channel.id in self._websockets and self._websockets[channel.id] is ws:
+            del self._websockets[channel.id]
+            
+        logger.info(f"ARI websocket closed for channel: {channel.id}")
 
     def _on_message(self, ws, message, channel=None, dump=None):
         """Handle websocket messages

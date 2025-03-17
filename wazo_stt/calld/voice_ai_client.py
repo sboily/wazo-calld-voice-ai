@@ -74,10 +74,38 @@ class VoiceAIClient:
 
     def stop(self):
         """Stop the Voice AI client"""
+        logger.info("Stopping Voice AI client")
         self.is_running = False
+        
+        # Close websocket if it's open
+        if self.event_loop and self.websocket:
+            try:
+                # Create a task to close the websocket
+                async def close_ws():
+                    if self.websocket:
+                        await self.websocket.close()
+                        logger.info("Voice AI websocket closed")
+                
+                # Run the close task
+                if not self.event_loop.is_closed():
+                    future = asyncio.run_coroutine_threadsafe(close_ws(), self.event_loop)
+                    # Wait for the future to complete with a timeout
+                    future.result(timeout=3)
+            except Exception as e:
+                logger.error(f"Error closing Voice AI websocket: {e}")
+        
+        # Wait for the worker thread to finish
         if self.worker_thread and self.worker_thread.is_alive():
             self.worker_thread.join(timeout=5)
+            if self.worker_thread.is_alive():
+                logger.warning("Voice AI worker thread did not terminate gracefully")
+        
+        # Clear resources
         self.queue = Queue()  # Clear the queue
+        self.websocket = None
+        self.connected = False
+        
+        logger.info("Voice AI client successfully stopped")
 
     def send_audio_chunk(self, chunk):
         """Send an audio chunk to the Voice AI service
@@ -181,7 +209,11 @@ class VoiceAIClient:
                 # Non-blocking queue check
                 if not self.queue.empty():
                     chunk = self.queue.get()
+                    # Send the audio chunk
                     await self.websocket.send(chunk)
+                    # Send EOF marker after each chunk as binary data
+                    await self.websocket.send(b'EOF')
+                    logger.debug("Sent audio chunk and EOF marker to Voice AI service")
                 else:
                     # Short sleep to prevent CPU spinning
                     await asyncio.sleep(0.01)
