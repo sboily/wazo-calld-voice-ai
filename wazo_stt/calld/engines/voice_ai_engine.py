@@ -5,7 +5,7 @@
 import logging
 import threading
 from .engine_base import SttEngineBase
-from .voice_ai_client import VoiceAIClient
+from ..voice_ai_client import VoiceAIClient
 
 logger = logging.getLogger(__name__)
 
