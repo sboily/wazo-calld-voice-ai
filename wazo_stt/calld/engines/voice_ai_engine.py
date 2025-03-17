@@ -20,7 +20,7 @@ class VoiceAIEngine(SttEngineBase):
         self._language = self._config["stt"]["language"]
         self._use_ai = self._config["stt"].get("use_ai", False)
 
-    def process_audio_chunk(self, channel, chunk):
+    def process_audio_chunk(self, channel, tenant_uuid, chunk):
         """Process an audio chunk through Voice AI service
         
         Args:
@@ -34,7 +34,7 @@ class VoiceAIEngine(SttEngineBase):
         # Results will come back through the callback
         self._clients[channel.id].send_audio_chunk(chunk)
 
-    def start(self, channel, **kwargs):
+    def start(self, channel, tenant_uuid, **kwargs):
         """Start processing for a channel
         
         Args:
@@ -56,13 +56,10 @@ class VoiceAIEngine(SttEngineBase):
         
         # Set up callbacks
         def on_transcription(text):
-            self.publish_transcription(channel, text)
+            self.publish_transcription(channel, tenant_uuid, text)
             
-        def on_ai_response(response):
-            self._handle_ai_response(channel, response)
-        
         # Start the client
-        success = client.start(on_transcription, on_ai_response)
+        success = client.start(on_transcription)
         if success:
             self._clients[channel.id] = client
             return True
@@ -70,7 +67,7 @@ class VoiceAIEngine(SttEngineBase):
             logger.error(f"Failed to start Voice AI client for channel: {channel.id}")
             return False
 
-    def stop(self, channel_id):
+    def stop(self, channel_id, tenant_uuid):
         """Stop processing for a channel
         
         Args:
@@ -82,22 +79,3 @@ class VoiceAIEngine(SttEngineBase):
             client.stop()
             return True
         return False
-        
-    def _handle_ai_response(self, channel, response):
-        """Handle AI response from Voice AI service
-        
-        Args:
-            channel: The channel object
-            response: The AI response text
-        """
-        logger.info(f"Voice AI response for channel {channel.id}: {response}")
-        try:
-            # Store AI response in channel variable
-            channel.setChannelVar(variable="X_WAZO_AI_RESPONSE", 
-                               value=response[-1020:])
-                
-            # Publish to bus
-            self._notifier.publish_ai_response(channel.id, response)
-                
-        except Exception as e:
-            logger.error(f"Error handling Voice AI response: {e}")

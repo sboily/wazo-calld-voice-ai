@@ -38,7 +38,7 @@ class SttService(object):
             self._notifier
         )
 
-    def start(self, channel, use_ai=None):
+    def start(self, channel, tenant_uuid, use_ai=None):
         """Start STT processing for a channel
         
         Args:
@@ -55,10 +55,10 @@ class SttService(object):
         self._engine.start(channel, **kwargs)
         
         # Start a thread to handle audio for this channel
-        call_thread = self._threadpool.submit(self._handle_call, channel)
-        self._current_calls.update({channel.id: call_thread})
+        call_thread = self._threadpool.submit(self._handle_call, channel, tenant_uuid)
+        self._current_calls.update({channel.id: call_thread, "tenant_uuid": tenant_uuid})
 
-    def stop(self, call_id):
+    def stop(self, call_id, tenant_uuid):
         """Stop STT processing for a call
         
         Args:
@@ -81,7 +81,7 @@ class SttService(object):
             call.cancel()
             
             # Stop the engine for this channel (will close Voice AI websocket)
-            self._engine.stop(call_id)
+            self._engine.stop(call_id, tenant_uuid)
             
             # Clean up any remaining buffers
             if call_id in self._buffers:
@@ -90,11 +90,12 @@ class SttService(object):
             return call.done()
         return False
 
-    def get_channel_by_id(self, channel_id):
+    def get_channel_by_id(self, channel_id, tenant_uuid):
         """Get a channel by ID
         
         Args:
             channel_id: The channel ID to get
+            tenant_uuid: The tenant UUID # Not implemented
         """
         return self._ari.channels.get(channelId=channel_id)
 
@@ -110,7 +111,7 @@ class SttService(object):
                 channel.id), "wb+")
         return None
 
-    def _handle_call(self, channel):
+    def _handle_call(self, channel, tenant_uuid):
         """Handle a call with STT
         
         Args:
@@ -125,9 +126,11 @@ class SttService(object):
                           on_error=self._on_error,
                           on_message=functools.partial(self._on_message,
                                                        channel=channel,
+                                                       tenant_uuid=tenant_uuid,
                                                        dump=dump),
                           on_close=functools.partial(self._on_close,
                                                      channel=channel,
+                                                     tenant_uuid=tenant_uuid,
                                                      dump=dump)
                           )
         
@@ -152,7 +155,7 @@ class SttService(object):
         """
         logger.error(f"STT websocket error: {error}")
 
-    def _on_close(self, ws, channel, dump):
+    def _on_close(self, ws, channel, tenant_uuid, dump):
         """Handle websocket close
         
         Args:
@@ -161,7 +164,7 @@ class SttService(object):
             dump: The dump file
         """
         # Process any remaining audio
-        self._send_buffer(channel, dump)
+        self._send_buffer(channel, tenant_uuid, dump)
         
         # Close the dump file if it exists
         if dump:
@@ -173,13 +176,14 @@ class SttService(object):
             
         logger.info(f"ARI websocket closed for channel: {channel.id}")
 
-    def _on_message(self, ws, message, channel=None, dump=None):
+    def _on_message(self, ws, message, channel=None, tenant_uuid=None, dump=None):
         """Handle websocket messages
         
         Args:
             ws: The websocket
             message: The message
             channel: The channel
+            tenant_uuid: The tenant
             dump: The dump file
         """
         chunk = self._buffers.setdefault(channel.id, b'') + message
@@ -188,9 +192,9 @@ class SttService(object):
         if len(chunk) < 1024 * 64:
             return
 
-        self._send_buffer(channel, dump)
+        self._send_buffer(channel, tenant_uuid, dump)
 
-    def _send_buffer(self, channel, dump):
+    def _send_buffer(self, channel, tenant_uuid, dump):
         """Send a buffer to the speech service
         
         Args:
@@ -205,4 +209,4 @@ class SttService(object):
             dump.write(chunk)
             
         # Process the chunk with the engine
-        self._engine.process_audio_chunk(channel, chunk)
+        self._engine.process_audio_chunk(channel, tenant_uuid, chunk)

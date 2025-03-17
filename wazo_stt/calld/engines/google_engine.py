@@ -25,11 +25,12 @@ class GoogleSttEngine(SttEngineBase):
                 sample_rate_hertz=16000,
                 language_code=self._config["stt"]["language"]))
 
-    def process_audio_chunk(self, channel, chunk):
+    def process_audio_chunk(self, channel, tenant_uuid, chunk):
         """Process an audio chunk through Google STT
         
         Args:
             channel: The channel object
+            tenant_uuid: The tenant UUID
             chunk: Binary audio data
         """
         if not chunk:
@@ -45,9 +46,9 @@ class GoogleSttEngine(SttEngineBase):
             for result in results:
                 if result.is_final:
                     transcription = result.alternatives[0].transcript
-                    self.publish_transcription(channel, transcription)
+                    self.publish_transcription(channel, tenant_uuid, transcription)
 
-    def start(self, channel, **kwargs):
+    def start(self, channel, tenant_uuid, **kwargs):
         """Start processing for a channel
         
         Args:
@@ -58,7 +59,7 @@ class GoogleSttEngine(SttEngineBase):
         # Google engine doesn't need special initialization per channel
         return True
 
-    def stop(self, channel_id):
+    def stop(self, channel_id, tenant_uuid):
         """Stop processing for a channel
         
         Args:
