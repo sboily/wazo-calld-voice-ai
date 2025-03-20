@@ -24,4 +24,4 @@ class SttNotifier:
             event,
             tenant_uuid
         )
-        self._bus_publisher.publish(bus_event)
+        self.bus_publisher.publish(bus_event)

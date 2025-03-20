@@ -12,13 +12,10 @@ import time
 from queue import Queue, Empty
 from concurrent.futures import ThreadPoolExecutor
 
-# Réduire le niveau de logging pour websockets
-websockets_logger = logging.getLogger('websockets')
-websockets_logger.setLevel(logging.WARNING)
+logger = logging.getLogger(__name__)
+
 websockets_protocol_logger = logging.getLogger('websockets.protocol')
 websockets_protocol_logger.setLevel(logging.ERROR)
-
-logger = logging.getLogger(__name__)
 
 
 class VoiceAIClient:
@@ -157,13 +154,6 @@ class VoiceAIClient:
             # Create new event loop for this thread
             self.event_loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self.event_loop)
-            
-            # Add signal handlers
-            for sig in (signal.SIGINT, signal.SIGTERM):
-                self.event_loop.add_signal_handler(
-                    sig,
-                    lambda: self.event_loop.call_soon_threadsafe(self.event_loop.stop)
-                )
             
             # Create the main task
             self.ws_task = self.event_loop.create_task(self._websocket_client())

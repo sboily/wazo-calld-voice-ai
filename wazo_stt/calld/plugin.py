@@ -19,6 +19,7 @@ class Plugin:
         ari = dependencies['ari']
         api = dependencies['api']
         config = dependencies['config']
+        pubsub = dependencies['pubsub']
         bus_publisher = dependencies['bus_publisher']
 
         notifier = SttNotifier(bus_publisher)
@@ -32,4 +33,4 @@ class Plugin:
         api.add_resource(SttCreateResource, '/stt', resource_class_args=[stt_service])
         api.add_resource(SttResource, '/stt/<call_id>', resource_class_args=[stt_service])
 
-        pubsub.subscribe('stopping', lambda *: stt_service.stop_all())
+        pubsub.subscribe('stopping', lambda *args: stt_service.stop_all())

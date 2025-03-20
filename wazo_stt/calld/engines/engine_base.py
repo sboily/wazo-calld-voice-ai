@@ -62,19 +62,7 @@ class SttEngineBase(metaclass=abc.ABCMeta):
         """
         logger.info(f"STT result for channel {channel.id}/{tenant_uuid}: {transcription}")
         
-        from ari.exceptions import ARINotFound
-        
         try:
-            try:
-                all_stt = (
-                    channel.getChannelVar(variable="X_WAZO_STT")['value'] + " " +
-                    transcription
-                )
-            except ARINotFound:
-                all_stt = transcription
-                
-            channel.setChannelVar(variable="X_WAZO_STT",
-                                value=all_stt[-1020:])
             self._notifier.publish_stt(channel.id, tenant_uuid, transcription)
         except Exception as e:
             logger.error(f"Error publishing transcription: {e}")
