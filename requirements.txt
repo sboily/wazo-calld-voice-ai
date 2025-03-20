@@ -1,2 +1,2 @@
 google-cloud-speech
-uhlive
+websockets>=10.0

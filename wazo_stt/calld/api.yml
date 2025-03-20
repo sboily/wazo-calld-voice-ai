@@ -12,6 +12,16 @@ paths:
         in: body
         description: Call parameters
         required: true
+        schema:
+          type: object
+          properties:
+            call_id:
+              type: string
+              description: Call ID to activate STT on
+            use_ai:
+              type: boolean
+              description: Enable AI agent for responses (only works with voice_ai engine)
+              default: false
       responses:
         '201':
           description: STT on call has been started
@@ -29,6 +39,6 @@ paths:
         - $ref: '#/parameters/CallID'
       responses:
         '204':
-          description: STT on call has been started
+          description: STT on call has been stopped
         '503':
           $ref: '#/responses/AnotherServiceUnavailable'
